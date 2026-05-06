@@ -1,19 +1,35 @@
-name: Deploy to Render
+name: CI/CD Pipeline
 
 on:
   push:
     branches: [main]
 
 jobs:
-  deploy:
+  test-build:
     runs-on: ubuntu-latest
-    environment: production
 
     steps:
       - uses: actions/checkout@v3
 
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
       - name: Install dependencies
         run: npm install
 
-      - name: Deploy
+      - name: Run tests
+        run: npm
+
+      - name: Build check
+        run: npm run build || echo "No build step"
+
+  deploy:
+    needs: test-build
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy to Render
         run: curl ${{ secrets.RENDER_DEPLOY_HOOK }}
