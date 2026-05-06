@@ -1,23 +1,19 @@
-name: CI/CD Deploy
+name: Deploy to Render
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
       - name: Install dependencies
         run: npm install
 
-      - name: Test app
-        run: echo "No tests yet"
-
-      - name: Deploy trigger
+      - name: Deploy
         run: curl ${{ secrets.RENDER_DEPLOY_HOOK }}
