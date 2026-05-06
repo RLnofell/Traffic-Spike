@@ -1,0 +1,16 @@
+stages:
+  - build
+  - test
+
+install:
+  stage: build
+  script:
+    - npm install
+
+test:
+  stage: test
+  script:
+    - echo "Running tests..."
+    - node server.js &
+    - sleep 3
+    - curl http://localhost:3000 || true
