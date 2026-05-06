@@ -1,0 +1,23 @@
+name: CI/CD Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Test app
+        run: echo "No tests yet"
+
+      - name: Deploy trigger
+        run: curl ${{ secrets.RENDER_DEPLOY_HOOK }}
