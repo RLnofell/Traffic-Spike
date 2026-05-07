@@ -1,46 +1,41 @@
+// Dashboard Elements - Matched with index.html IDs
 const ticketEl = document.getElementById('ticketCount');
 const latencyEl = document.getElementById('latencyVal');
 const currentRPSEl = document.getElementById('currentRPS');
 const peakRPSEl = document.getElementById('peakRPS');
 const memEl = document.getElementById('memUsage');
-const capacityValEl = document.getElementById('capacityVal');
+const failedEl = document.getElementById('failedReq');
 const perfTimeEl = document.getElementById('perfExecTime');
 const perfBarEl = document.getElementById('perfScoreBar');
-const statusEl = document.getElementById('statusMsg');
 const redisStatusEl = document.getElementById('redisStatus');
-const btn = document.getElementById('buyBtn');
+const stressBtn = document.getElementById('stressBtn');
+const clockEl = document.getElementById('clock');
+const testProgressEl = document.getElementById('testProgress');
+const capacityValEl = document.getElementById('capacityVal');
+const activityFeedEl = document.getElementById('activityFeed');
 
-
-function showTab(tabId, event) {
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(tabId).classList.add('active');
-    event.currentTarget.classList.add('active');
-}
-
-function updateClock() {
-    const clock = document.getElementById('clock');
-    if (clock) clock.innerText = new Date().toLocaleTimeString();
-}
 let isRunningTest = false;
 
-function runWebAutocannon() {
+// Time Tracker
+function updateClock() {
+    if (clockEl) {
+        clockEl.innerText = new Date().toLocaleTimeString();
+    }
+}
+
+async function runWebAutocannon() {
     if (isRunningTest) return;
 
     const c = parseInt(document.getElementById('inputC').value) || 10;
     const d = parseInt(document.getElementById('inputD').value) || 5;
-    const progressEl = document.getElementById('testProgress');
-    const stressBtn = document.getElementById('stressBtn');
 
     isRunningTest = true;
-    stressBtn.disabled = true;
-    stressBtn.innerText = "[ RUNNING... ]";
-    progressEl.style.color = "#00ff41";
-    progressEl.innerText = `ATTACKING WITH ${c} CONCURRENT CONNECTIONS FOR ${d}s...`;
+    if (testProgressEl) testProgressEl.innerText = `ATTACKING... ${d}s REMAINING (${c} CONNECTIONS)`;
 
     const startTime = Date.now();
     const endTime = startTime + (d * 1000);
 
+    // Parallel Workers
     for (let i = 0; i < c; i++) {
         const worker = async () => {
             while (Date.now() < endTime && isRunningTest) {
@@ -54,96 +49,81 @@ function runWebAutocannon() {
 
     const timer = setInterval(() => {
         const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
-        progressEl.innerText = `ATTACKING... ${remaining}s REMAINING (${c} CONNECTIONS)`;
+        if (testProgressEl) testProgressEl.innerText = `ATTACKING... ${remaining}s REMAINING (${c} CONNECTIONS)`;
 
         if (remaining <= 0) {
             clearInterval(timer);
             isRunningTest = false;
-            stressBtn.disabled = false;
-            stressBtn.innerText = "[ EXECUTE ]";
-            progressEl.innerText = "TEST COMPLETED. CHECK LOGS ABOVE.";
-            progressEl.style.color = "#888";
-            fetchStatus();
+            if (testProgressEl) testProgressEl.innerText = '[ SYSTEM READY: Waiting for traffic... ]';
         }
     }, 1000);
 }
-setInterval(updateClock, 1000);
 
 async function fetchStatus() {
     try {
         const res = await fetch('/status');
-        if (!res.ok) throw new Error("TIMEOUT");
+        if (!res.ok) throw new Error("NETWORK_ERROR");
         const data = await res.json();
 
-        ticketEl.innerText = data.ticketsSold;
+        if (ticketEl) ticketEl.innerText = data.ticketsSold;
+        if (latencyEl) latencyEl.innerText = data.avgLatencyMs + "ms";
         if (currentRPSEl) currentRPSEl.innerText = data.currentRPS;
         if (peakRPSEl) peakRPSEl.innerText = data.peakRPS;
-        latencyEl.innerText = data.avgLatencyMs + "ms";
         if (memEl) memEl.innerText = data.system.memory;
         if (failedEl) failedEl.innerText = data.failedRequests;
 
         if (redisStatusEl) {
+            const isConnected = data.system.redis === 'CONNECTED';
             redisStatusEl.innerText = `[ REDIS: ${data.system.redis} ]`;
-            redisStatusEl.style.color = data.system.redis === 'CONNECTED' ? '#00ff41' : '#ff4141';
+            redisStatusEl.style.color = isConnected ? '#00ff41' : '#ff4141';
+            redisStatusEl.style.textShadow = isConnected ? '0 0 10px #00ff41' : 'none';
         }
 
         const currentRPS = data.currentRPS;
-        capacityValEl.innerText = `${currentRPS} REQ/SEC`;
+        if (capacityValEl) capacityValEl.innerText = `${currentRPS} REQ/SEC`;
 
-        const targetRPS = 500;
+        const targetRPS = 1000;
         const percentage = Math.min(100, (currentRPS / targetRPS) * 100);
-        perfBarEl.style.width = percentage + "%";
+        if (perfBarEl) perfBarEl.style.width = percentage + "%";
 
         if (currentRPS > 0) {
-            perfTimeEl.innerText = `Current load handling: ${currentRPS} active transactions per second. Peak reached: ${data.peakRPS}.`;
-        } else {
-            perfTimeEl.innerText = "Waiting for traffic stress test...";
+            if (perfTimeEl) perfTimeEl.innerText = `Handling: ${currentRPS} RPS. Peak: ${data.peakRPS}. Redis Sync: Active.`;
         }
 
-        const activityFeed = document.getElementById('activityFeed');
-        if (activityFeed) {
-            activityFeed.innerHTML = '';
-            data.logs.slice().reverse().slice(0, 10).forEach(log => {
+        if (activityFeedEl && data.logs) {
+            activityFeedEl.innerHTML = '';
+            [...data.logs].reverse().forEach(log => {
                 const entry = document.createElement('div');
-                entry.style.fontSize = '0.7rem';
-                entry.style.padding = '2px 10px';
+                entry.style.fontSize = '0.75rem';
+                entry.style.padding = '4px 8px';
                 entry.style.borderLeft = log.status >= 400 ? '2px solid #ff3e3e' : '2px solid #00ff41';
                 entry.style.marginBottom = '2px';
-                entry.style.fontFamily = 'JetBrains Mono, monospace';
 
                 const color = log.status >= 400 ? '#ff3e3e' : '#00ff41';
                 entry.innerHTML = `<span style="color: #666">[${log.timestamp}]</span> <span style="color: ${color}">${log.method} ${log.path}</span> - ${log.status} <span style="color: #888">(${log.latency})</span>`;
-                activityFeed.appendChild(entry);
+                activityFeedEl.appendChild(entry);
             });
         }
 
-        if (statusEl) {
-            if (statusEl.innerText.includes("SERVER")) {
-                statusEl.innerText = "STATUS: ONLINE";
-                statusEl.style.color = "#00ff41";
-            }
-        }
     } catch (e) {
-        if (statusEl) {
-            statusEl.innerText = "STATUS: SERVER_OVERLOADED (TIMEOUT)";
-            statusEl.style.color = "#ff3e3e";
-        }
+        console.error("DASHBOARD_FETCH_ERROR:", e);
     }
 }
 
-async function buyTicket() {
-    btn.disabled = true;
-    try {
-        const res = await fetch('/buy', { method: 'POST' });
-        if (!res.ok) throw new Error(res.status);
-    } catch (e) {
-        console.error("Buy failed", e);
-    } finally {
-        setTimeout(() => { btn.disabled = false; }, 200);
-        fetchStatus();
-    }
+window.showTab = function (tabId, event) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    event.currentTarget.classList.add('active');
 }
 
 setInterval(fetchStatus, 1000);
+setInterval(updateClock, 1000);
+
 fetchStatus();
 updateClock();
+
+// Event Listeners
+if (stressBtn) {
+    stressBtn.onclick = runWebAutocannon;
+}

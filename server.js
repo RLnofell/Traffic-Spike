@@ -6,41 +6,12 @@ const compression = require("compression");
 const morgan = require("morgan");
 const { createClient } = require("redis");
 const os = require("os");
-const app = express();
 
+const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Redis Configuration (SECURED)
-const redisClient = createClient({
-  username: 'default',
-  password: process.env.REDIS_PASSWORD,
-  socket: {
-    host: process.env.REDIS_HOST,
-    port: parseInt(process.env.REDIS_PORT)
-  }
-});
 
 let isRedisConnected = false;
-
-redisClient.on('error', err => {
-  console.error('Redis Client Error', err);
-  isRedisConnected = false;
-});
-
-redisClient.connect().then(() => {
-  console.log('CONNECTED TO REDIS CLOUD');
-  isRedisConnected = true;
-}).catch(err => {
-  console.error('Redis connection failed, falling back to Local RAM');
-});
-
-app.use(morgan("dev"));
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(compression());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json());
-
-// State Variables
 let localTicketsSold = 0;
 let totalRequests = 0;
 let failedRequests = 0;
@@ -50,6 +21,45 @@ let requestsInLastSecond = 0;
 let currentRPS = 0;
 let peakRPS = 0;
 
+const redisHost = process.env.REDIS_HOST;
+const redisPort = process.env.REDIS_PORT;
+const redisPassword = process.env.REDIS_PASSWORD;
+
+let redisClient = null;
+
+if (redisHost && redisPort) {
+  redisClient = createClient({
+    username: 'default',
+    password: redisPassword,
+    socket: {
+      host: redisHost,
+      port: parseInt(redisPort),
+      connectTimeout: 10000
+    }
+  });
+
+  redisClient.on('error', err => {
+    console.error('[REDIS ERROR]', err.message);
+    isRedisConnected = false;
+  });
+
+  redisClient.connect().then(() => {
+    console.log('CONNECTED TO REDIS CLOUD SUCCESS');
+    isRedisConnected = true;
+  }).catch(err => {
+    console.error('Redis connection failed:', err.message);
+    isRedisConnected = false;
+  });
+} else {
+  console.warn('⚠️ REDIS CONFIG MISSING: Environment variables not found.');
+}
+
+app.use(morgan("tiny"));
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(compression());
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
+
 setInterval(() => {
   currentRPS = requestsInLastSecond;
   if (currentRPS > peakRPS) peakRPS = currentRPS;
@@ -57,34 +67,32 @@ setInterval(() => {
 }, 1000);
 
 app.use((req, res, next) => {
-  if (req.path === '/buy') {
-    totalRequests++;
-    requestsInLastSecond++;
-  }
+  if (req.path !== '/buy') return next();
+
+  totalRequests++;
+  requestsInLastSecond++;
 
   const start = process.hrtime();
   res.on('finish', () => {
     const diff = process.hrtime(start);
     const durationMs = (diff[0] * 1e9 + diff[1]) / 1e6;
 
-    if (req.path === '/buy') {
-      const logEntry = {
-        timestamp: new Date().toLocaleTimeString(),
-        method: req.method,
-        path: req.path,
-        status: res.statusCode,
-        latency: durationMs.toFixed(2) + "ms"
-      };
+    const logEntry = {
+      timestamp: new Date().toLocaleTimeString(),
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      latency: durationMs.toFixed(2) + "ms"
+    };
 
-      recentLogs.push(logEntry);
-      if (recentLogs.length > 15) recentLogs.shift();
+    recentLogs.push(logEntry);
+    if (recentLogs.length > 15) recentLogs.shift();
 
-      if (res.statusCode >= 400) {
-        failedRequests++;
-      } else {
-        requestLatencies.push(durationMs);
-        if (requestLatencies.length > 100) requestLatencies.shift();
-      }
+    if (res.statusCode >= 400) {
+      failedRequests++;
+    } else {
+      requestLatencies.push(durationMs);
+      if (requestLatencies.length > 100) requestLatencies.shift();
     }
   });
   next();
@@ -96,14 +104,14 @@ app.get("/status", async (req, res) => {
     : 0;
 
   const memoryUsage = process.memoryUsage();
-
   let ticketsSold = localTicketsSold;
-  if (isRedisConnected) {
+
+  if (isRedisConnected && redisClient) {
     try {
       const val = await redisClient.get('ticketsSold');
       ticketsSold = val ? parseInt(val) : 0;
     } catch (e) {
-      console.error("Redis Get Error", e);
+      isRedisConnected = false;
     }
   }
 
@@ -117,22 +125,19 @@ app.get("/status", async (req, res) => {
     logs: recentLogs,
     system: {
       memory: (memoryUsage.heapUsed / 1024 / 1024).toFixed(2) + "MB",
-      specCPU: "0.1 vCPU (Shared)",
-      specRAM: "512 MB (Free Tier)",
+      specCPU: os.cpus().length + " Cores",
       uptime: Math.floor(process.uptime()) + "s",
       redis: isRedisConnected ? "CONNECTED" : "OFFLINE"
     }
   });
 });
 
-app.post("/buy", async (req, res) => {
-  if (isRedisConnected) {
-    try {
-      await redisClient.incr('ticketsSold');
-    } catch (e) {
-      console.error("Redis Incr Error", e);
+app.post("/buy", (req, res) => {
+  if (isRedisConnected && redisClient) {
+    redisClient.incr('ticketsSold').catch(e => {
+      isRedisConnected = false;
       localTicketsSold++;
-    }
+    });
   } else {
     localTicketsSold++;
   }
@@ -140,5 +145,5 @@ app.post("/buy", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log("SYSTEM BOOTED: http://localhost:" + PORT);
+  console.log(`SYSTEM ONLINE: Port ${PORT} | Mode: ${isRedisConnected ? 'REDIS' : 'LOCAL'}`);
 });
