@@ -132,12 +132,24 @@ app.get("/status", async (req, res) => {
   });
 });
 
-app.post("/buy", (req, res) => {
-  if (isRedisConnected && redisClient) {
-    redisClient.incr('ticketsSold').catch(e => {
+let pendingIncrements = 0;
+
+setInterval(async () => {
+  if (pendingIncrements > 0 && isRedisConnected && redisClient) {
+    const toAdd = pendingIncrements;
+    pendingIncrements = 0;
+    try {
+      await redisClient.incrBy('ticketsSold', toAdd);
+    } catch (e) {
       isRedisConnected = false;
-      localTicketsSold++;
-    });
+      localTicketsSold += toAdd;
+    }
+  }
+}, 500);
+
+app.post("/buy", (req, res) => {
+  if (isRedisConnected) {
+    pendingIncrements++;
   } else {
     localTicketsSold++;
   }
@@ -145,5 +157,5 @@ app.post("/buy", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`SYSTEM ONLINE: Port ${PORT} | Mode: ${isRedisConnected ? 'REDIS' : 'LOCAL'}`);
+  console.log(`🚀 TURBO SYSTEM ONLINE: Port ${PORT} | Mode: BATCHED_REDIS`);
 });
