@@ -1,4 +1,4 @@
-// Dashboard Elements - Matched with index.html IDs
+// Dashboard Elements
 const ticketEl = document.getElementById('ticketCount');
 const latencyEl = document.getElementById('latencyVal');
 const currentRPSEl = document.getElementById('currentRPS');
@@ -16,13 +16,14 @@ const activityFeedEl = document.getElementById('activityFeed');
 
 let isRunningTest = false;
 
-// Time Tracker
+// Real-time Clock
 function updateClock() {
     if (clockEl) {
         clockEl.innerText = new Date().toLocaleTimeString();
     }
 }
 
+// Stress Test Execution
 async function runWebAutocannon() {
     if (isRunningTest) return;
 
@@ -35,7 +36,6 @@ async function runWebAutocannon() {
     const startTime = Date.now();
     const endTime = startTime + (d * 1000);
 
-    // Parallel Workers
     for (let i = 0; i < c; i++) {
         const worker = async () => {
             while (Date.now() < endTime && isRunningTest) {
@@ -59,12 +59,14 @@ async function runWebAutocannon() {
     }, 1000);
 }
 
+// Data Fetching
 async function fetchStatus() {
     try {
         const res = await fetch('/status');
         if (!res.ok) throw new Error("NETWORK_ERROR");
         const data = await res.json();
 
+        // Update Stats
         if (ticketEl) ticketEl.innerText = data.ticketsSold;
         if (latencyEl) latencyEl.innerText = data.avgLatencyMs + "ms";
         if (currentRPSEl) currentRPSEl.innerText = data.currentRPS;
@@ -72,6 +74,7 @@ async function fetchStatus() {
         if (memEl) memEl.innerText = data.system.memory;
         if (failedEl) failedEl.innerText = data.failedRequests;
 
+        // Redis Status
         if (redisStatusEl) {
             const isConnected = data.system.redis === 'CONNECTED';
             redisStatusEl.innerText = `[ REDIS: ${data.system.redis} ]`;
@@ -79,6 +82,7 @@ async function fetchStatus() {
             redisStatusEl.style.textShadow = isConnected ? '0 0 10px #00ff41' : 'none';
         }
 
+        // Capacity Analyzer
         const currentRPS = data.currentRPS;
         if (capacityValEl) capacityValEl.innerText = `${currentRPS} REQ/SEC`;
 
@@ -90,6 +94,7 @@ async function fetchStatus() {
             if (perfTimeEl) perfTimeEl.innerText = `Handling: ${currentRPS} RPS. Peak: ${data.peakRPS}. Redis Sync: Active.`;
         }
 
+        // Logs
         if (activityFeedEl && data.logs) {
             activityFeedEl.innerHTML = '';
             [...data.logs].reverse().forEach(log => {
@@ -98,7 +103,7 @@ async function fetchStatus() {
                 entry.style.padding = '4px 8px';
                 entry.style.borderLeft = log.status >= 400 ? '2px solid #ff3e3e' : '2px solid #00ff41';
                 entry.style.marginBottom = '2px';
-
+                
                 const color = log.status >= 400 ? '#ff3e3e' : '#00ff41';
                 entry.innerHTML = `<span style="color: #666">[${log.timestamp}]</span> <span style="color: ${color}">${log.method} ${log.path}</span> - ${log.status} <span style="color: #888">(${log.latency})</span>`;
                 activityFeedEl.appendChild(entry);
@@ -106,24 +111,22 @@ async function fetchStatus() {
         }
 
     } catch (e) {
-        console.error("DASHBOARD_FETCH_ERROR:", e);
+        console.error("FETCH_ERROR:", e);
     }
 }
 
-window.showTab = function (tabId, event) {
+// Navigation
+window.showTab = function(tabId, event) {
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
     event.currentTarget.classList.add('active');
 }
 
+// Init
 setInterval(fetchStatus, 1000);
 setInterval(updateClock, 1000);
-
 fetchStatus();
 updateClock();
 
-// Event Listeners
-if (stressBtn) {
-    stressBtn.onclick = runWebAutocannon;
-}
+if (stressBtn) stressBtn.onclick = runWebAutocannon;
