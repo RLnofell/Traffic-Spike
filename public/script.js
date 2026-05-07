@@ -92,13 +92,17 @@ async function fetchStatus() {
             logBody.appendChild(row);
         });
 
-        if (statusEl.innerText.includes("SERVER")) {
-            statusEl.innerText = "STATUS: ONLINE";
-            statusEl.style.color = "#00ff41";
+        if (statusEl) {
+            if (statusEl.innerText.includes("SERVER")) {
+                statusEl.innerText = "STATUS: ONLINE";
+                statusEl.style.color = "#00ff41";
+            }
         }
     } catch (e) {
-        statusEl.innerText = "STATUS: SERVER_OVERLOADED (TIMEOUT)";
-        statusEl.style.color = "#ff3e3e";
+        if (statusEl) {
+            statusEl.innerText = "STATUS: SERVER_OVERLOADED (TIMEOUT)";
+            statusEl.style.color = "#ff3e3e";
+        }
     }
 }
 
