@@ -20,17 +20,29 @@ let totalRequests = 0;
 let failedRequests = 0;
 let requestLatencies = [];
 let recentLogs = [];
+let requestsInLastSecond = 0;
+let currentRPS = 0;
+let peakRPS = 0;
+
+// Update RPS every second
+setInterval(() => {
+  currentRPS = requestsInLastSecond;
+  if (currentRPS > peakRPS) peakRPS = currentRPS;
+  requestsInLastSecond = 0;
+}, 1000);
 
 app.use((req, res, next) => {
-  if (req.path === '/buy' || req.path === '/status') {
-    if (req.path === '/buy') totalRequests++;
+  if (req.path === '/buy') {
+    totalRequests++;
+    requestsInLastSecond++;
+  }
 
-    const start = process.hrtime();
+  const start = process.hrtime();
+  res.on('finish', () => {
+    const diff = process.hrtime(start);
+    const durationMs = (diff[0] * 1e9 + diff[1]) / 1e6;
 
-    res.on('finish', () => {
-      const diff = process.hrtime(start);
-      const durationMs = (diff[0] * 1e9 + diff[1]) / 1e6;
-
+    if (req.path === '/buy') {
       const logEntry = {
         timestamp: new Date().toLocaleTimeString(),
         method: req.method,
@@ -38,20 +50,18 @@ app.use((req, res, next) => {
         status: res.statusCode,
         latency: durationMs.toFixed(2) + "ms"
       };
+      
+      recentLogs.push(logEntry);
+      if (recentLogs.length > 15) recentLogs.shift();
 
-      if (req.path === '/buy') {
-        recentLogs.push(logEntry);
-        if (recentLogs.length > 15) recentLogs.shift();
-
-        if (res.statusCode >= 400) {
-          failedRequests++;
-        } else {
-          requestLatencies.push(durationMs);
-          if (requestLatencies.length > 100) requestLatencies.shift();
-        }
+      if (res.statusCode >= 400) {
+        failedRequests++;
+      } else {
+        requestLatencies.push(durationMs);
+        if (requestLatencies.length > 100) requestLatencies.shift();
       }
-    });
-  }
+    }
+  });
   next();
 });
 
@@ -60,21 +70,25 @@ app.get("/status", (req, res) => {
     ? (requestLatencies.reduce((a, b) => a + b, 0) / requestLatencies.length).toFixed(2)
     : 0;
 
+  const memoryUsage = process.memoryUsage();
+  
   res.json({
     ticketsSold,
     totalRequests,
     failedRequests,
+    currentRPS,
+    peakRPS,
     avgLatencyMs: avgLatency,
-    logs: recentLogs
+    logs: recentLogs,
+    system: {
+      memory: (memoryUsage.heapUsed / 1024 / 1024).toFixed(2) + "MB",
+      uptime: Math.floor(process.uptime()) + "s"
+    }
   });
 });
 
 app.post("/buy", (req, res) => {
-  let dummy = 0;
-  for (let i = 0; i < 50000; i++) {
-    dummy += Math.random();
-  }
-
+  // Logic xử lý mua vé (giả lập tốn tài nguyên nhẹ)
   ticketsSold++;
   res.status(200).json({ success: true });
 });

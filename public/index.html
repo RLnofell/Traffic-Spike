@@ -28,16 +28,41 @@
                     <span class="stat-value" id="ticketCount">0</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-label">Latency</span>
+                    <span class="stat-label">Lat (Avg)</span>
                     <span class="stat-value" id="latencyVal">0ms</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-label">Total Req</span>
-                    <span class="stat-value" id="totalReq">0</span>
+                    <span class="stat-label">RPS (Current)</span>
+                    <span class="stat-value" id="currentRPS" style="color: #fbbf24;">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Peak RPS</span>
+                    <span class="stat-value" id="peakRPS" style="color: #38bdf8;">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Mem Heap</span>
+                    <span class="stat-value" id="memUsage">0MB</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-label" style="color: #ff3e3e;">Failed</span>
                     <span class="stat-value" id="failedReq" style="color: #ff3e3e;">0</span>
+                </div>
+            </div>
+
+            <div class="performance-lab">
+                <div class="lab-header">
+                    <span style="color: #fbbf24;">🚀 SYSTEM THROUGHPUT ANALYZER</span>
+                    <span id="systemHealth" style="color: #00ff41;">HEARTBEAT: OK</span>
+                </div>
+                <div class="lab-body">
+                    <div class="score-display">
+                        <div class="score-title">CONCURRENT CAPACITY ESTIMATE</div>
+                        <div class="score-grade" id="capacityVal">0 USERS/SEC</div>
+                        <div class="score-sub" id="perfExecTime">Live traffic analysis in progress...</div>
+                    </div>
+                    <div class="score-progress">
+                        <div class="progress-bar" id="perfScoreBar" style="width: 0%"></div>
+                    </div>
                 </div>
             </div>
 
@@ -56,18 +81,8 @@
                 <div id="testProgress" style="margin-top: 10px; font-size: 0.7rem; color: #888;">READY TO LAUNCH...</div>
             </div>
 
-            <div class="log-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>TIME</th>
-                            <th>ENDPOINT</th>
-                            <th>STATUS</th>
-                            <th>LATENCY</th>
-                        </tr>
-                    </thead>
-                    <tbody id="logBody"></tbody>
-                </table>
+            <div class="log-container" id="activityFeed">
+                <div style="color: #888; font-size: 0.7rem; padding: 10px;">[ SYSTEM READY: Waiting for traffic... ]</div>
             </div>
         </div>
 

@@ -1,9 +1,12 @@
 const ticketEl = document.getElementById('ticketCount');
 const latencyEl = document.getElementById('latencyVal');
-const totalEl = document.getElementById('totalReq');
-const failedEl = document.getElementById('failedReq');
+const currentRPSEl = document.getElementById('currentRPS');
+const peakRPSEl = document.getElementById('peakRPS');
+const memEl = document.getElementById('memUsage');
+const capacityValEl = document.getElementById('capacityVal');
+const perfTimeEl = document.getElementById('perfExecTime');
+const perfBarEl = document.getElementById('perfScoreBar');
 const statusEl = document.getElementById('statusMsg');
-const logBody = document.getElementById('logBody');
 const btn = document.getElementById('buyBtn');
 
 function showTab(tabId, event) {
@@ -74,23 +77,44 @@ async function fetchStatus() {
 
         // Update Stats
         ticketEl.innerText = data.ticketsSold;
-        totalEl.innerText = data.totalRequests;
-        failedEl.innerText = data.failedRequests;
+        if (currentRPSEl) currentRPSEl.innerText = data.currentRPS;
+        if (peakRPSEl) peakRPSEl.innerText = data.peakRPS;
         latencyEl.innerText = data.avgLatencyMs + "ms";
+        if (memEl) memEl.innerText = data.system.memory;
+        if (failedEl) failedEl.innerText = data.failedRequests;
 
-        // Update Logs
-        logBody.innerHTML = '';
-        data.logs.reverse().forEach(log => {
-            const row = document.createElement('tr');
-            const isError = log.status >= 400;
-            row.innerHTML = `
-                <td>${log.timestamp}</td>
-                <td>${log.method} ${log.path}</td>
-                <td class="${isError ? 'status-error' : 'status-200'}">${log.status}</td>
-                <td>${log.latency}</td>
-            `;
-            logBody.appendChild(row);
-        });
+        // Update Capacity Analyzer
+        const currentRPS = data.currentRPS;
+        capacityValEl.innerText = `${currentRPS} REQ/SEC`;
+        
+        // Simple logic to show progress bar based on Peak RPS (assuming 1000 is a target)
+        const targetRPS = 500; 
+        const percentage = Math.min(100, (currentRPS / targetRPS) * 100);
+        perfBarEl.style.width = percentage + "%";
+        
+        if (currentRPS > 0) {
+            perfTimeEl.innerText = `Current load handling: ${currentRPS} active transactions per second. Peak reached: ${data.peakRPS}.`;
+        } else {
+            perfTimeEl.innerText = "Waiting for traffic stress test...";
+        }
+
+        // Update Logs (Activity Feed style)
+        const activityFeed = document.getElementById('activityFeed');
+        if (activityFeed) {
+            activityFeed.innerHTML = '';
+            data.logs.slice().reverse().slice(0, 10).forEach(log => {
+                const entry = document.createElement('div');
+                entry.style.fontSize = '0.7rem';
+                entry.style.padding = '2px 10px';
+                entry.style.borderLeft = log.status >= 400 ? '2px solid #ff3e3e' : '2px solid #00ff41';
+                entry.style.marginBottom = '2px';
+                entry.style.fontFamily = 'JetBrains Mono, monospace';
+                
+                const color = log.status >= 400 ? '#ff3e3e' : '#00ff41';
+                entry.innerHTML = `<span style="color: #666">[${log.timestamp}]</span> <span style="color: ${color}">${log.method} ${log.path}</span> - ${log.status} <span style="color: #888">(${log.latency})</span>`;
+                activityFeed.appendChild(entry);
+            });
+        }
 
         if (statusEl) {
             if (statusEl.innerText.includes("SERVER")) {
@@ -119,6 +143,7 @@ async function buyTicket() {
     }
 }
 
-setInterval(fetchStatus, 1000);
+// Removed runBenchmark as we are doing live throughput analysis now
+setInterval(fetchStatus, 1000); 
 fetchStatus();
 updateClock();
