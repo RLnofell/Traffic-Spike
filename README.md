@@ -34,13 +34,23 @@ A custom-built terminal-style interface provides live visibility into critical s
 - Secure configuration management using .env (excluded from version control).
 - Optimized logging using Morgan in tiny mode to minimize CPU overhead.
 
+## Deployment and Resource Constraints
+
+This system is specifically optimized for the **Render Free Tier**, which provides extremely limited resources:
+- CPU: 0.1 vCPU (Shared)
+- RAM: 512 MB
+- Network: Limited bandwidth
+
+**Engineering Challenge:** On such a constrained environment, standard I/O patterns would cause a CPU bottleneck. This project demonstrates how to overcome these limitations using **Redis Batching** and **Asynchronous I/O**, achieving high throughput where standard applications would fail.
+
 ## Tech Stack
 
-- Backend: Node.js, Express.js.
-- Database: Redis (Cloud Instance).
-- Security: Helmet, Dotenv.
-- Monitoring: Morgan, Custom High-Resolution Timer.
-- Frontend: Vanilla JS, CSS (Terminal Aesthetic).
+- Backend: Node.js (Express.js)
+- Database: Redis Cloud (Distributed Persistence)
+- Hosting: Render (Free Tier)
+- Security: Helmet.js, Dotenv
+- Performance: Custom Batching System, Morgan (Tiny Mode)
+- Frontend: Vanilla Javascript, CSS (Glassmorphism & Terminal UI)
 
 ## Installation and Local Setup
 
