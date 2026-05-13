@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TRAFFIC MONITOR - PORTFOLIO v1.0</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -28,29 +29,33 @@
         <div id="monitor" class="tab-content active">
             <div class="stats-grid">
                 <div class="stat-card">
-                    <span class="stat-label">Sold</span>
-                    <span class="stat-value" id="ticketCount">0</span>
+                    <span class="stat-label">Redis Stock</span>
+                    <span class="stat-value" id="redisStock">0</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-label">Lat (Avg)</span>
-                    <span class="stat-value" id="latencyVal">0ms</span>
+                    <span class="stat-label">DB Stock</span>
+                    <span class="stat-value" id="dbStock" style="color: #60a5fa;">0</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-label">RPS (Current)</span>
+                    <span class="stat-label">Sync Queue</span>
+                    <span class="stat-value" id="queueSize" style="color: #f87171;">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">RPS</span>
                     <span class="stat-value" id="currentRPS" style="color: #fbbf24;">0</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-label">Peak RPS</span>
-                    <span class="stat-value" id="peakRPS" style="color: #38bdf8;">0</span>
+                    <span class="stat-label">Latency</span>
+                    <span class="stat-value" id="latencyVal">0ms</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-label">Mem Heap</span>
                     <span class="stat-value" id="memUsage">0MB</span>
                 </div>
-                <div class="stat-card">
-                    <span class="stat-label" style="color: #ff3e3e;">Failed</span>
-                    <span class="stat-value" id="failedReq" style="color: #ff3e3e;">0</span>
-                </div>
+            </div>
+
+            <div class="chart-container" style="height: 200px; margin: 20px 0; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px; border: 1px solid #333;">
+                <canvas id="rpsChart"></canvas>
             </div>
 
             <div class="performance-lab">
@@ -98,6 +103,7 @@
                             <input type="number" id="inputD" value="10">
                         </div>
                         <button class="terminal-btn" id="stressBtn">[ EXECUTE ]</button>
+                        <button class="terminal-btn" id="resetBtn" style="color: #ff3e3e; border-color: #ff3e3e; margin-left: 10px;">[ RESET SYSTEM ]</button>
                     </div>
                 </div>
             </div>

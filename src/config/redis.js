@@ -143,5 +143,13 @@ module.exports = {
         if (!isRedisConnected) return 0;
         const val = await redisClient.get(`stock:${productId}`);
         return val ? parseInt(val) : 0;
+    },
+    getQueueLength: async () => {
+        if (!isRedisConnected) return 0;
+        try {
+            return await redisClient.lLen('order_queue');
+        } catch (err) {
+            return 0;
+        }
     }
 };
